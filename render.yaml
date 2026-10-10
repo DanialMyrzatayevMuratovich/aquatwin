@@ -10,6 +10,11 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: 3.12.7
+      # Optional sign-in for the dashboard: when both are set, a login form is shown first.
+      - key: DASHBOARD_USER
+        sync: false
+      - key: DASHBOARD_PASSWORD
+        sync: false
 
   # The bot runs in webhook mode here (bot.py switches by itself when RENDER_EXTERNAL_URL is set),
   # so an incoming Telegram message wakes the sleeping instance.

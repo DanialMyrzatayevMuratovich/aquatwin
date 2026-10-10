@@ -19,7 +19,7 @@ def offline(monkeypatch, tmp_path):
         raise data.requests.ConnectionError("network is blocked in tests")
     monkeypatch.setattr(data.requests, "get", refuse)
     monkeypatch.setattr(data, "CACHE_DIR", tmp_path)
-    monkeypatch.setattr(data.time, "sleep", lambda s: None)
+    monkeypatch.setattr(data, "RETRY_PAUSES", (0, 0))  # same number of attempts, no waiting
 
 
 @pytest.fixture

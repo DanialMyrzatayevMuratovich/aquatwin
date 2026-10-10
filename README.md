@@ -5,7 +5,7 @@ AquaTwin warns smallholder farmers **up to 6 weeks ahead** that a dry spell is c
 
 Pilot: 8 irrigated districts of Turkistan and Kyzylorda regions, Kazakhstan (Aral Sea basin).
 Bot: [@AquaTwin_Bot](https://t.me/AquaTwin_Bot) · Dashboard: https://aquatwin-dashboard.onrender.com
-(free hosting: the first response after 15 idle minutes takes about a minute).
+(sign-in required; free hosting, so the first response after 15 idle minutes takes about a minute).
 
 ## Status (11 October 2026)
 
@@ -14,7 +14,7 @@ Bot: [@AquaTwin_Bot](https://t.me/AquaTwin_Bot) · Dashboard: https://aquatwin-d
 | Live data for 8 districts (ECMWF via Open-Meteo) | Works at any hour; checked on 11.10.2026 |
 | Risk from 51 ECMWF ensemble scenarios | Works |
 | ECMWF AIFS AI ensemble shown next to it (2 weeks) | Works; does not affect the risk level |
-| Dashboard and Telegram bot in kk / ru / en | Work; 48 offline tests pass on Python 3.10 and 3.12 |
+| Dashboard and Telegram bot in kk / ru / en | Work; 50 offline tests pass on Python 3.10 and 3.12 |
 | Replay of real history (no internet needed) | Works for any date from 1991 to 2025 |
 | History check 1991–2025 | Done, see `reports/` |
 | Deployment on Render (free plan) | Live since 11.10.2026: [dashboard](https://aquatwin-dashboard.onrender.com), bot via webhook |
@@ -96,7 +96,13 @@ pip install -r requirements-dev.txt && python scripts/history.py   # rebuild rep
 Two free web services run from this repository and redeploy on every push to `main`:
 `aquatwin-dashboard` and `aquatwin-bot`. `render.yaml` describes the same setup for a fresh account:
 **New → Blueprint**, pick the repository, then set `TELEGRAM_TOKEN` for the bot service.
-The bot switches to webhook mode on Render by itself. Free services sleep after 15 minutes without
+The bot switches to webhook mode on Render by itself.
+
+**Dashboard sign-in.** When both `DASHBOARD_USER` and `DASHBOARD_PASSWORD` are set in the service's
+environment, the dashboard shows a login form first. Delete either variable to make it public again.
+The credentials are kept in Render only, never in this repository. The bot is not affected.
+
+ Free services sleep after 15 minutes without
 requests and take about a minute to wake up, so open both a few minutes before a demo.
 
 ## Project structure
@@ -112,7 +118,7 @@ requests and take about a minute to wake up, so open both a few minutes before a
 | `bot.py` | Telegram bot (polling locally, webhook on Render) |
 | `data/baseline/` | ERA5 daily ET0 and precipitation, 1991–2025, per district |
 | `reports/` | Output of `scripts/history.py` |
-| `tests/` | 48 offline tests, including one on recorded real API responses |
+| `tests/` | 50 offline tests, including one on recorded real API responses |
 | `AQUATWIN_TZ_V2.md` | Specification (in Russian); it overrides the older `AQUATWIN_SPEC.md` |
 
 ## Honest limitations

@@ -1,7 +1,10 @@
 """AquaTwin dashboard.  Run:  streamlit run app.py"""
 import datetime as dt
+import hmac
 import logging
+import os
 import re
+import time
 from concurrent.futures import ThreadPoolExecutor
 
 import pandas as pd
@@ -13,6 +16,31 @@ from aquatwin import advice, config, data, drought
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 st.set_page_config(page_title="AquaTwin", page_icon="💧", layout="wide")
+
+
+def require_login() -> None:
+    """Sign-in gate, active only when DASHBOARD_USER and DASHBOARD_PASSWORD are set in the environment.
+
+    The credentials live in the hosting settings, never in the repository.
+    """
+    user, password = os.environ.get("DASHBOARD_USER", ""), os.environ.get("DASHBOARD_PASSWORD", "")
+    if not (user and password) or st.session_state.get("signed_in"):
+        return
+    st.title("💧 AquaTwin")
+    with st.form("login"):
+        login = st.text_input("Login")
+        secret = st.text_input("Password", type="password")
+        if st.form_submit_button("Sign in"):
+            same_user = hmac.compare_digest(login.strip().lower().encode(), user.strip().lower().encode())
+            if same_user & hmac.compare_digest(secret.encode(), password.encode()):
+                st.session_state["signed_in"] = True
+                st.rerun()
+            time.sleep(1)  # slows down password guessing
+            st.error("Wrong login or password.")
+    st.stop()
+
+
+require_login()
 
 COLORS = {"low": "#2e9e5b", "moderate": "#e0a800", "high": "#d6372b", "ongoing": "#7a4b2a"}
 EC46_COLOR, AI_COLOR = "#1f77b4", "#8e44ad"
