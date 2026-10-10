@@ -1,0 +1,3 @@
+# For scripts/history.py (charts in reports/). Not needed to run the dashboard or the bot.
+-r requirements.txt
+matplotlib>=3.8

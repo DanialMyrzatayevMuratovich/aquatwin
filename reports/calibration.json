@@ -1,0 +1,92 @@
+{
+  "rule": {
+    "high_pct": 40,
+    "low_pct": 20,
+    "window_days": 20,
+    "cooldown_days": 30,
+    "season": [
+      [
+        4,
+        1
+      ],
+      [
+        9,
+        30
+      ]
+    ]
+  },
+  "target_per_district_season": [
+    0.5,
+    1.5
+  ],
+  "min_dry_days_tried_on_1991_2014": {
+    "5": 1.59,
+    "7": 1.31,
+    "10": 0.98,
+    "14": 0.62,
+    "21": 0.23
+  },
+  "min_dry_days_chosen": 7,
+  "config_value_now": 7,
+  "dry_spells_per_district_season": {
+    "1991-2014": 1.31,
+    "2015-2025": 1.67
+  },
+  "dry_spells_per_district_season_by_period": {
+    "1991-2000": 0.74,
+    "2001-2010": 1.36,
+    "2011-2020": 1.94,
+    "2021-2025": 1.9
+  },
+  "dry_spells_total": {
+    "all_months": 760,
+    "in_season": 399
+  },
+  "median_drop_mm_in_season": 31.2,
+  "share_of_season_days_pct": {
+    "le_10": {
+      "1991-2020": 7.0,
+      "2021-2025": 21.7
+    },
+    "le_20": {
+      "1991-2020": 17.0,
+      "2021-2025": 38.2
+    }
+  },
+  "driest_season_by_district": {
+    "kyzylorda": 2021,
+    "maktaaral": 2021,
+    "ordabasy": 2025,
+    "otyrar": 2025,
+    "sairam": 2025,
+    "shardara": 2025,
+    "turkistan": 2008,
+    "zhetysay": 2021
+  },
+  "rank_of_2021_by_district": {
+    "kyzylorda": 1,
+    "maktaaral": 1,
+    "ordabasy": 2,
+    "otyrar": 5,
+    "sairam": 2,
+    "shardara": 2,
+    "turkistan": 5,
+    "zhetysay": 1
+  },
+  "replay_episode": {
+    "district": "maktaaral",
+    "onset": "2021-05-21",
+    "days_dry": 61,
+    "min_pct": 0.0,
+    "drop_mm": 35.8,
+    "replay_date": "2021-05-07",
+    "rule": "longest in-season dry spell of 2021-2025",
+    "rejected_first_rule": {
+      "rule": "largest drop_mm",
+      "district": "sairam",
+      "onset": "2022-04-06",
+      "drop_mm": 186.7,
+      "why": "the drop follows a very wet spell (percentile before = 100.0), so it measures rain ending, not drought"
+    }
+  }
+}

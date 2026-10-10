@@ -1,0 +1,7 @@
+requests>=2.31
+numpy>=1.26
+pandas>=2.2,<3
+plotly>=6,<8
+streamlit>=1.65,<2
+python-telegram-bot[webhooks]>=21,<23
+pytest>=8

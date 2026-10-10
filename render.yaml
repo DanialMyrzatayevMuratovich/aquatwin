@@ -1,0 +1,26 @@
+# Render Blueprint: both services on the free plan.
+# Free web services sleep after 15 minutes without requests and take about a minute to wake up.
+services:
+  - type: web
+    name: aquatwin-dashboard
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: streamlit run app.py --server.port $PORT --server.address 0.0.0.0 --server.headless true
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.7
+
+  # The bot runs in webhook mode here (bot.py switches by itself when RENDER_EXTERNAL_URL is set),
+  # so an incoming Telegram message wakes the sleeping instance.
+  - type: web
+    name: aquatwin-bot
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python bot.py
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.7
+      - key: TELEGRAM_TOKEN
+        sync: false  # set in the Render dashboard, never in the repository

@@ -1,0 +1,10 @@
+# runtime snapshots of the last good live result
+data_cache/
+__pycache__/
+.pytest_cache/
+.venv/
+venv/
+.env
+.DS_Store
+# private chat log, must never be published
+main.txt
