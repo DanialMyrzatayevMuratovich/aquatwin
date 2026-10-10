@@ -189,6 +189,7 @@ def main():
     token = os.environ.get("TELEGRAM_TOKEN")
     if not token:
         sys.exit("Set TELEGRAM_TOKEN (get one from @BotFather).")
+    store.ping()
     app = build(token)
     url = os.environ.get("RENDER_EXTERNAL_URL")
     if url:

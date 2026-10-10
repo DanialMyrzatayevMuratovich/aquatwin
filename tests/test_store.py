@@ -75,3 +75,15 @@ def test_database_failure_is_swallowed_and_the_store_rests(fake_db):
     assert store.get_lang(7) is None              # no exception reaches the bot
     attempts = fake_db["connects"]
     assert store.get_lang(7) is None and fake_db["connects"] == attempts  # resting: the database is not asked again
+
+
+def test_ping_reports_the_state(fake_db):
+    assert store.ping() is True
+    fake_db["fail"] = True
+    monkeypatch_conn = store._conn
+    monkeypatch_conn.closed = True      # the kept connection has gone away
+    assert store.ping() is False
+
+
+def test_ping_is_false_when_the_store_is_off():
+    assert store.ping() is False

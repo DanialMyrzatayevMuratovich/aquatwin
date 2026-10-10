@@ -57,6 +57,16 @@ def _run(sql: str, params: tuple):
         return None
 
 
+def ping() -> bool:
+    """Open the connection at start-up, so the first user does not wait for it; logs the outcome."""
+    if not enabled():
+        log.info("language store is off (DATABASE_URL is not set)")
+        return False
+    ok = _run("select 1", ()) is not None
+    log.info("language store: %s", "connected" if ok else "unavailable, languages are kept in memory")
+    return ok
+
+
 def get_lang(user_id: int) -> str | None:
     row = _run("select lang from aquatwin.bot_users where user_id = %s", (user_id,))
     return row[0] if row else None
