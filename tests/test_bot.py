@@ -98,7 +98,36 @@ def test_error_handler_answers_the_user():
     update.effective_message.reply_text.assert_awaited_once_with(bot.TEXT["error"]["en"])
 
 
+def test_language_is_restored_from_the_store_after_a_restart(monkeypatch):
+    asked = []
+    monkeypatch.setattr(bot.store, "get_lang", lambda user_id: asked.append(user_id) or "kk")
+    update, context = MagicMock(spec=Update), MagicMock()
+    update.effective_user.id, context.user_data = 42, {}
+    asyncio.run(bot.load_lang(update, context))
+    asyncio.run(bot.load_lang(update, context))  # the store is asked once per user per process
+    assert context.user_data["lang"] == "kk" and asked == [42]
+
+
+def test_unknown_user_keeps_the_telegram_language(monkeypatch):
+    monkeypatch.setattr(bot.store, "get_lang", lambda user_id: None)
+    update, context = MagicMock(spec=Update), MagicMock()
+    update.effective_user.id, context.user_data = 42, {}
+    asyncio.run(bot.load_lang(update, context))
+    assert "lang" not in context.user_data
+
+
+def test_language_choice_is_saved(monkeypatch):
+    saved = []
+    monkeypatch.setattr(bot.store, "set_lang", lambda user_id, lang: saved.append((user_id, lang)))
+    update = MagicMock(spec=Update)
+    update.effective_message.reply_text = AsyncMock()
+    update.effective_message.text, update.effective_user.id = "English", 42
+    context = MagicMock()
+    context.user_data = {}
+    asyncio.run(bot.set_lang(update, context))
+    assert saved == [(42, "en")]
+
+
 def test_application_wiring():
     app = bot.build("123456:TEST-TOKEN")
-    handlers = app.handlers[0]
-    assert len(handlers) == 6 and app.error_handlers
+    assert len(app.handlers[0]) == 6 and len(app.handlers[-1]) == 1 and app.error_handlers

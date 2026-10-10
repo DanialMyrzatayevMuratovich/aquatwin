@@ -20,6 +20,7 @@ def offline(monkeypatch, tmp_path):
     monkeypatch.setattr(data.requests, "get", refuse)
     monkeypatch.setattr(data, "CACHE_DIR", tmp_path)
     monkeypatch.setattr(data, "RETRY_PAUSES", (0, 0))  # same number of attempts, no waiting
+    monkeypatch.delenv("DATABASE_URL", raising=False)  # the language store stays off unless a test turns it on
 
 
 @pytest.fixture

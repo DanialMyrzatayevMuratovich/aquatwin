@@ -15,9 +15,9 @@ import sys
 import time
 
 from telegram import KeyboardButton, ReplyKeyboardMarkup, Update
-from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters
+from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, TypeHandler, filters
 
-from aquatwin import advice, config, data, drought, nearest_region
+from aquatwin import advice, config, data, drought, nearest_region, store
 
 log = logging.getLogger("aquatwin.bot")
 
@@ -111,9 +111,22 @@ async def help_(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.effective_message.reply_text(TEXT["help"][lang_of(update, context)])
 
 
+async def load_lang(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Runs before every handler: after a restart, bring back the language the user chose earlier."""
+    data_ = context.user_data
+    if data_ is None or "lang" in data_ or data_.get("lang_checked") or update.effective_user is None:
+        return
+    data_["lang_checked"] = True
+    lang = await asyncio.to_thread(store.get_lang, update.effective_user.id)
+    if lang in LANGS.values():
+        data_["lang"] = lang
+
+
 async def set_lang(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["lang"] = LANGS[update.effective_message.text]
     await start(update, context)
+    if update.effective_user is not None:
+        await asyncio.to_thread(store.set_lang, update.effective_user.id, context.user_data["lang"])
 
 
 async def on_location(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -159,6 +172,7 @@ async def on_error(update: object, context: ContextTypes.DEFAULT_TYPE):
 def build(token: str) -> Application:
     app = Application.builder().token(token).build()
     new_message = ~filters.UpdateType.EDITED  # live-location updates arrive as edits; answer only once
+    app.add_handler(TypeHandler(Update, load_lang), group=-1)
     app.add_handler(CommandHandler("start", start, filters=new_message))
     app.add_handler(CommandHandler("help", help_, filters=new_message))
     app.add_handler(CommandHandler("district", by_district, filters=new_message))

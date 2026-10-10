@@ -29,3 +29,6 @@ services:
         value: 3.12.7
       - key: TELEGRAM_TOKEN
         sync: false  # set in the Render dashboard, never in the repository
+      # Optional Postgres connection string: the bot then remembers each user's language across restarts.
+      - key: DATABASE_URL
+        sync: false

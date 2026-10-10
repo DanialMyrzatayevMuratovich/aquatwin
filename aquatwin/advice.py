@@ -64,13 +64,14 @@ LABELS = {
         "district": "District",
         "deficit": "14-day water deficit (evaporation − rain): {d} mm, normal {n} mm",
         "surplus": "14-day water surplus (rain − evaporation): {d} mm",
-        "dryness": "Dryness: percentile {p} vs 1991–2020",
+        "dryness": "Dryness: percentile {p} (compared with the 1991–2020 norm)",
         "prob": "Chance of a dry spell in the next 6 weeks: {p}% ({k} of {n} ECMWF scenarios)",
         "onset": "Expected onset: {date} (in {d} days)",
         "onset_actual": "Dry spell actually started: {date}",
         "ai": "ECMWF AIFS AI model, 2 weeks: {k} of {n} scenarios",
         "todo": "What to do",
         "offseason": "Outside the irrigation season ({season}). Monitoring continues.",
+        "live": "📡 Live data: observations through {date}, ECMWF forecast for the next 6 weeks",
         "snapshot": "Data as of {date}",
         "replay": "⏪ Replay of the past: actual data for {date}, not a forecast",
     },
@@ -78,13 +79,14 @@ LABELS = {
         "district": "Район",
         "deficit": "Дефицит влаги за 14 дней (испарение − осадки): {d} мм, норма {n} мм",
         "surplus": "Избыток влаги за 14 дней (осадки − испарение): {d} мм",
-        "dryness": "Сухость: {p}-й перцентиль к 1991–2020",
+        "dryness": "Сухость: {p}-й перцентиль (сравнение с нормой 1991–2020)",
         "prob": "Вероятность засушливого периода в ближайшие 6 недель: {p} % ({k} из {n} {scen} ECMWF)",
         "onset": "Ожидаемое начало: {date} (через {d} дн.)",
         "onset_actual": "Засушливый период по факту начался: {date}",
         "ai": "AI-модель ECMWF AIFS, 2 недели: {k} из {n} {scen}",
         "todo": "Что делать",
         "offseason": "Сейчас вне поливного сезона ({season}). Мониторинг продолжается.",
+        "live": "📡 Живые данные: наблюдения по {date}, прогноз ECMWF на 6 недель вперёд",
         "snapshot": "Данные на {date}",
         "replay": "⏪ Повтор прошлого: фактические данные за {date}, это не прогноз",
     },
@@ -92,13 +94,14 @@ LABELS = {
         "district": "Аудан",
         "deficit": "14 күндегі ылғал тапшылығы (булану − жауын-шашын): {d} мм, қалыпты деңгей {n} мм",
         "surplus": "14 күндегі ылғал артықшылығы (жауын-шашын − булану): {d} мм",
-        "dryness": "Құрғақтық: 1991–2020 жылдармен салыстырғанда {p}-перцентиль",
+        "dryness": "Құрғақтық: {p}-перцентиль (1991–2020 жж. нормасымен салыстырғанда)",
         "prob": "Алдағы 6 аптада құрғақ кезең болу ықтималдығы: {p} % (ECMWF болжамының {n} сценарийінің {k}-і)",
         "onset": "Күтілетін басталуы: {date} ({d} күннен кейін)",
         "onset_actual": "Құрғақ кезең іс жүзінде басталды: {date}",
         "ai": "ECMWF AIFS AI-моделі, 2 апта: {n} сценарийдің {k}-і",
         "todo": "Не істеу керек",
         "offseason": "Қазір суару маусымы емес ({season}). Бақылау жалғасуда.",
+        "live": "📡 Нақты деректер: {date} дейінгі бақылаулар, ECMWF-тің алдағы 6 аптаға болжамы",
         "snapshot": "Деректер {date} күнгі жағдай бойынша",
         "replay": "⏪ Өткен кезеңді қайталау: {date} күнгі нақты деректер, бұл болжам емес",
     },
@@ -128,7 +131,7 @@ def message(a: Assessment, region: dict, lang: str = "ru") -> str:
         lines.append(L["prob"].format(p=round(100 * a.p_dry), k=a.n_dry, n=a.n_members, scen=_scen(a.n_members)))
     if a.onset_date is not None:
         key = "onset_actual" if replay else "onset"
-        lines.append(L[key].format(date=f"{a.onset_date:%d.%m}", d=a.days_to_onset))
+        lines.append(L[key].format(date=f"{a.onset_date:%d.%m.%Y}", d=a.days_to_onset))
     if a.ai is not None:
         lines.append(L["ai"].format(k=a.ai["n_dry"], n=a.ai["n_members"], scen=_scen(a.ai["n_members"])))
     lines.append("")
@@ -137,8 +140,7 @@ def message(a: Assessment, region: dict, lang: str = "ru") -> str:
         lines += [f"• {x}" for x in ACTIONS[lang][a.level]]
     else:
         lines.append(L["offseason"].format(season=season_label()))
-    if a.source in ("snapshot", "replay"):
-        lines += ["", L[a.source].format(date=f"{a.as_of:%d.%m.%Y}")]
+    lines += ["", L[a.source].format(date=f"{a.as_of:%d.%m.%Y}")]  # every message says how fresh it is
     return "\n".join(lines)
 
 

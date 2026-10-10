@@ -87,6 +87,15 @@ def test_message_in_season_has_actions_and_probability():
     assert "26 из 51 сценария ECMWF" in advice.message(a, region, "ru")
 
 
+def test_every_message_says_how_fresh_the_data_is():
+    region = config.REGIONS[0]
+    a = drought.assess(synthetic_region(dry_members=26))
+    for lang in ("en", "ru", "kk"):
+        last = advice.message(a, region, lang).splitlines()[-1]
+        assert last == advice.LABELS[lang]["live"].format(date="01.07.2026")
+    assert f"{a.onset_date:%d.%m.%Y}" in advice.message(a, region, "ru")  # the onset date carries the year
+
+
 def test_offseason_message():
     region = config.REGIONS[0]
     a = drought.assess(synthetic_region(dry_members=26, as_of="2026-11-10"))

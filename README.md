@@ -14,7 +14,8 @@ Bot: [@AquaTwin_Bot](https://t.me/AquaTwin_Bot) · Dashboard: https://aquatwin-d
 | Live data for 8 districts (ECMWF via Open-Meteo) | Works at any hour; checked on 11.10.2026 |
 | Risk from 51 ECMWF ensemble scenarios | Works |
 | ECMWF AIFS AI ensemble shown next to it (2 weeks) | Works; does not affect the risk level |
-| Dashboard and Telegram bot in kk / ru / en | Work; 50 offline tests pass on Python 3.10 and 3.12 |
+| Dashboard and Telegram bot in kk / ru / en | Work; 57 offline tests pass on Python 3.10 and 3.12 |
+| Bot remembers each user's language across restarts | Works (Postgres on Supabase, schema `aquatwin`) |
 | Replay of real history (no internet needed) | Works for any date from 1991 to 2025 |
 | History check 1991–2025 | Done, see `reports/` |
 | Deployment on Render (free plan) | Live since 11.10.2026: [dashboard](https://aquatwin-dashboard.onrender.com), bot via webhook |
@@ -102,6 +103,11 @@ The bot switches to webhook mode on Render by itself.
 environment, the dashboard shows a login form first. Delete either variable to make it public again.
 The credentials are kept in Render only, never in this repository. The bot is not affected.
 
+**Language memory.** With `DATABASE_URL` set (a Postgres connection string), the bot stores each user's
+Telegram id and chosen language in `aquatwin.bot_users`, so the choice survives restarts. Nothing else is
+stored: no locations, no messages. Without the variable the choice lives in memory only, and after a
+restart the bot follows the language of the user's Telegram app.
+
  Free services sleep after 15 minutes without
 requests and take about a minute to wake up, so open both a few minutes before a demo.
 
@@ -114,11 +120,12 @@ requests and take about a minute to wake up, so open both a few minutes before a
 | `aquatwin/balance.py` | Water balance and scenario paths |
 | `aquatwin/drought.py` | Percentiles, dry-spell detection, probability, risk level |
 | `aquatwin/advice.py` | Risk → farmer message in kk / ru / en |
+| `aquatwin/store.py` | Remembers each user's language (Postgres); off without `DATABASE_URL` |
 | `app.py` | Streamlit dashboard |
 | `bot.py` | Telegram bot (polling locally, webhook on Render) |
 | `data/baseline/` | ERA5 daily ET0 and precipitation, 1991–2025, per district |
 | `reports/` | Output of `scripts/history.py` |
-| `tests/` | 50 offline tests, including one on recorded real API responses |
+| `tests/` | 57 offline tests, including one on recorded real API responses |
 | `AQUATWIN_TZ_V2.md` | Specification (in Russian); it overrides the older `AQUATWIN_SPEC.md` |
 
 ## Honest limitations
