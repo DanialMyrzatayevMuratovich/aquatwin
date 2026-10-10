@@ -68,8 +68,14 @@ TEXT = {
 }
 
 
-def lang_of(context: ContextTypes.DEFAULT_TYPE) -> str:
-    return (context.user_data or {}).get("lang", "ru")
+def lang_of(update: object, context: ContextTypes.DEFAULT_TYPE) -> str:
+    """The chosen language; before a choice (or after a restart) the language of the user's Telegram app."""
+    chosen = (context.user_data or {}).get("lang")
+    if chosen:
+        return chosen
+    user = update.effective_user if isinstance(update, Update) else None
+    code = user.language_code if user is not None else None
+    return code[:2] if isinstance(code, str) and code[:2] in LANGS.values() else "ru"
 
 
 def keyboard(lang: str) -> ReplyKeyboardMarkup:
@@ -93,16 +99,16 @@ def assess_region(region: dict, replay_date: str | None = None) -> drought.Asses
 async def reply_assessment(update: Update, context: ContextTypes.DEFAULT_TYPE, region: dict,
                            replay_date: str | None = None) -> None:
     a = await asyncio.to_thread(assess_region, region, replay_date)
-    await update.effective_message.reply_text(advice.message(a, region, lang_of(context)), parse_mode="Markdown")
+    await update.effective_message.reply_text(advice.message(a, region, lang_of(update, context)), parse_mode="Markdown")
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    lang = lang_of(context)
+    lang = lang_of(update, context)
     await update.effective_message.reply_text(TEXT["start"][lang], reply_markup=keyboard(lang))
 
 
 async def help_(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.effective_message.reply_text(TEXT["help"][lang_of(context)])
+    await update.effective_message.reply_text(TEXT["help"][lang_of(update, context)])
 
 
 async def set_lang(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -111,7 +117,7 @@ async def set_lang(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def on_location(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    lang = lang_of(context)
+    lang = lang_of(update, context)
     loc = update.effective_message.location
     region, km = nearest_region(loc.latitude, loc.longitude)
     if km > MAX_DISTANCE_KM:
@@ -141,13 +147,13 @@ async def replay(update: Update, context: ContextTypes.DEFAULT_TYPE):
             raise ValueError("district is missing")
         await reply_assessment(update, context, region, replay_date=date)
     except ValueError:  # bad date, unknown district, or a date outside the baseline period
-        await update.effective_message.reply_text(TEXT["replay_usage"][lang_of(context)])
+        await update.effective_message.reply_text(TEXT["replay_usage"][lang_of(update, context)])
 
 
 async def on_error(update: object, context: ContextTypes.DEFAULT_TYPE):
     log.error("handler failed", exc_info=context.error)
     if isinstance(update, Update) and update.effective_message:
-        await update.effective_message.reply_text(TEXT["error"][lang_of(context)])
+        await update.effective_message.reply_text(TEXT["error"][lang_of(update, context)])
 
 
 def build(token: str) -> Application:

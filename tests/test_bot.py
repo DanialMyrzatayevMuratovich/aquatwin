@@ -14,10 +14,11 @@ def replay_mode(monkeypatch):
     monkeypatch.setattr(bot, "_cache", {})
 
 
-def call(handler, text=None, lat=None, lon=None, args=None, user_data=None):
+def call(handler, text=None, lat=None, lon=None, args=None, user_data=None, app_lang=None):
     update = MagicMock(spec=Update)
     update.effective_message.reply_text = AsyncMock()
     update.effective_message.text = text
+    update.effective_user.language_code = app_lang
     if lat is not None:
         update.effective_message.location.latitude = lat
         update.effective_message.location.longitude = lon
@@ -41,6 +42,15 @@ def test_language_switch(label, lang):
     user_data = {}
     texts, _ = call(bot.set_lang, text=label, user_data=user_data)
     assert user_data["lang"] == lang and texts[0] == bot.TEXT["start"][lang]
+
+
+@pytest.mark.parametrize("app_lang, expected", [("kk", "kk"), ("en-US", "en"), ("ru", "ru"), ("de", "ru"), (None, "ru")])
+def test_language_defaults_to_the_telegram_app_language(app_lang, expected):
+    """After a restart the bot has no stored choice, so it follows the user's Telegram language."""
+    texts, _ = call(bot.start, app_lang=app_lang)
+    assert texts[0] == bot.TEXT["start"][expected]
+    texts, _ = call(bot.start, app_lang=app_lang, user_data={"lang": "en"})
+    assert texts[0] == bot.TEXT["start"]["en"]  # an explicit choice wins
 
 
 def test_location_in_pilot_district_gets_an_assessment():

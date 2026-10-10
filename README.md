@@ -13,7 +13,7 @@ Bot: [@AquaTwin_Bot](https://t.me/AquaTwin_Bot).
 | Live data for 8 districts (ECMWF via Open-Meteo) | Works at any hour; checked on 11.10.2026 |
 | Risk from 51 ECMWF ensemble scenarios | Works |
 | ECMWF AIFS AI ensemble shown next to it (2 weeks) | Works; does not affect the risk level |
-| Dashboard and Telegram bot in kk / ru / en | Work; 43 offline tests pass on Python 3.10 and 3.12 |
+| Dashboard and Telegram bot in kk / ru / en | Work; 48 offline tests pass on Python 3.10 and 3.12 |
 | Replay of real history (no internet needed) | Works for any date from 1991 to 2025 |
 | History check 1991–2025 | Done, see `reports/` |
 | Deployment on Render | Files are ready (`render.yaml`); not deployed yet |
@@ -110,7 +110,7 @@ requests and take about a minute to wake up, so open both a few minutes before a
 | `bot.py` | Telegram bot (polling locally, webhook on Render) |
 | `data/baseline/` | ERA5 daily ET0 and precipitation, 1991–2025, per district |
 | `reports/` | Output of `scripts/history.py` |
-| `tests/` | 43 offline tests, including one on recorded real API responses |
+| `tests/` | 48 offline tests, including one on recorded real API responses |
 | `AQUATWIN_TZ_V2.md` | Specification (in Russian); it overrides the older `AQUATWIN_SPEC.md` |
 
 ## Honest limitations
