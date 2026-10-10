@@ -26,7 +26,9 @@ def fake_db(monkeypatch):
         def execute(self, sql, params):
             if state["fail"]:
                 raise Error("connection lost")
-            if sql.startswith("select"):
+            if sql == "select 1":
+                self.description, self._row = ("?column?",), 1
+            elif sql.startswith("select"):
                 self.description, self._row = ("lang",), state["rows"].get(params[0])
             else:
                 self.description, state["rows"][params[0]] = None, params[1]
@@ -79,9 +81,7 @@ def test_database_failure_is_swallowed_and_the_store_rests(fake_db):
 
 def test_ping_reports_the_state(fake_db):
     assert store.ping() is True
-    fake_db["fail"] = True
-    monkeypatch_conn = store._conn
-    monkeypatch_conn.closed = True      # the kept connection has gone away
+    fake_db["fail"] = True              # the database goes away
     assert store.ping() is False
 
 
