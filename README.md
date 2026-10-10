@@ -4,7 +4,8 @@ AquaTwin warns smallholder farmers **up to 6 weeks ahead** that a dry spell is c
 **what to do**, in Kazakh, Russian or English, via Telegram.
 
 Pilot: 8 irrigated districts of Turkistan and Kyzylorda regions, Kazakhstan (Aral Sea basin).
-Bot: [@AquaTwin_Bot](https://t.me/AquaTwin_Bot).
+Bot: [@AquaTwin_Bot](https://t.me/AquaTwin_Bot) · Dashboard: https://aquatwin-dashboard.onrender.com
+(free hosting: the first response after 15 idle minutes takes about a minute).
 
 ## Status (11 October 2026)
 
@@ -16,7 +17,7 @@ Bot: [@AquaTwin_Bot](https://t.me/AquaTwin_Bot).
 | Dashboard and Telegram bot in kk / ru / en | Work; 48 offline tests pass on Python 3.10 and 3.12 |
 | Replay of real history (no internet needed) | Works for any date from 1991 to 2025 |
 | History check 1991–2025 | Done, see `reports/` |
-| Deployment on Render | Files are ready (`render.yaml`); not deployed yet |
+| Deployment on Render (free plan) | Live since 11.10.2026: [dashboard](https://aquatwin-dashboard.onrender.com), bot via webhook |
 | Own trained ML model | Not built |
 | NVIDIA Earth-2 runs | Not done: needs a GPU with 40 GB of memory |
 | Advice reviewed by an agronomist, farmer interviews | Not done |
@@ -92,8 +93,9 @@ pip install -r requirements-dev.txt && python scripts/history.py   # rebuild rep
 
 ## Deploy on Render
 
-`render.yaml` describes two free web services: `aquatwin-dashboard` and `aquatwin-bot`.
-In Render: **New → Blueprint**, pick this repository, then set `TELEGRAM_TOKEN` for the bot service.
+Two free web services run from this repository and redeploy on every push to `main`:
+`aquatwin-dashboard` and `aquatwin-bot`. `render.yaml` describes the same setup for a fresh account:
+**New → Blueprint**, pick the repository, then set `TELEGRAM_TOKEN` for the bot service.
 The bot switches to webhook mode on Render by itself. Free services sleep after 15 minutes without
 requests and take about a minute to wake up, so open both a few minutes before a demo.
 
