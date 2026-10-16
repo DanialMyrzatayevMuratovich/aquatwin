@@ -13,6 +13,7 @@ import logging
 import os
 import sys
 import time
+from concurrent.futures import ThreadPoolExecutor
 
 from telegram import KeyboardButton, ReplyKeyboardMarkup, Update
 from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, TypeHandler, filters
@@ -24,15 +25,21 @@ log = logging.getLogger("aquatwin.bot")
 REPLAY = "--replay" in sys.argv
 MAX_DISTANCE_KM = 150
 CACHE_TTL_S = 3 * 3600
+LANG_WAIT_S = 0.5
+ASSESSMENT_WAIT_S = 25
+MAX_INFLIGHT = 4
 REGIONS = {r["id"]: r for r in config.REGIONS}
 LANGS = {"Русский": "ru", "Қазақша": "kk", "English": "en"}
 _cache: dict[tuple, tuple[float, drought.Assessment]] = {}
+_inflight: dict[tuple, asyncio.Task] = {}
+# Optional database I/O cannot use up the threads needed for weather calculations.
+_language_pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="bot-language")
 
 TEXT = {
     "start": {
-        "ru": "Здравствуйте! Я AquaTwin 💧\nОтправьте геолокацию поля — я скажу, ждёт ли вас засуха в ближайшие 6 недель и что делать.",
-        "kk": "Сәлеметсіз бе! Мен AquaTwin 💧\nЕгістіктің геолокациясын жіберіңіз — алдағы 6 аптада құрғақшылық бола ма және не істеу керек екенін айтамын.",
-        "en": "Hi! I'm AquaTwin 💧\nSend your field location and I'll tell you if a drought is coming in the next 6 weeks and what to do.",
+        "ru": "Здравствуйте! Я AquaTwin 💧\nПоказываю районные индикаторы засухи и рекомендации для планирования воды.\n\n📍 Отправьте геолокацию на юге Казахстана\n/district maktaaral — текущий прогноз моделей\n/replay 2021-05-07 maktaaral — исторический пример\n\nВыберите язык ниже.",
+        "kk": "Сәлеметсіз бе! Мен AquaTwin 💧\nАудан деңгейіндегі құрғақшылық көрсеткіштері мен суды жоспарлау ұсыныстарын көрсетемін.\n\n📍 Қазақстанның оңтүстігіндегі геолокацияны жіберіңіз\n/district maktaaral — модельдердің қазіргі болжамы\n/replay 2021-05-07 maktaaral — тарихи мысал\n\nТөменнен тілді таңдаңыз.",
+        "en": "Hi! I'm AquaTwin 💧\nExplore district-level drought indicators and suggested actions for water planning.\n\n📍 Send a location in southern Kazakhstan\n/district maktaaral — current model outlook\n/replay 2021-05-07 maktaaral — historical example\n\nChoose your language below.",
     },
     "button": {"ru": "📍 Отправить геолокацию", "kk": "📍 Геолокация жіберу", "en": "📍 Send location"},
     "far": {
@@ -41,6 +48,16 @@ TEXT = {
         "en": "We currently cover pilot districts of Turkistan and Kyzylorda regions only.",
     },
     "wait": {"ru": "Считаю прогноз…", "kk": "Болжамды есептеп жатырмын…", "en": "Computing forecast…"},
+    "slow": {
+        "ru": "Поставщик погоды отвечает медленно. Расчёт продолжается; повторите запрос чуть позже. Для исторического примера: /replay 2021-05-07 maktaaral",
+        "kk": "Ауа райы дерегін жеткізуші баяу жауап беріп жатыр. Есептеу жалғасады; сәлден соң қайта сұраңыз. Тарихи мысал: /replay 2021-05-07 maktaaral",
+        "en": "The weather provider is responding slowly. The calculation is still running; please try again shortly. For a historical example: /replay 2021-05-07 maktaaral",
+    },
+    "busy": {
+        "ru": "Сейчас считаю несколько районов. Попробуйте чуть позже; /start и /help доступны.",
+        "kk": "Қазір бірнеше аудан есептеліп жатыр. Сәлден соң қайталаңыз; /start және /help қолжетімді.",
+        "en": "Several district calculations are running. Please try shortly; /start and /help are available.",
+    },
     "error": {
         "ru": "Не получилось посчитать прогноз. Попробуйте ещё раз через минуту.",
         "kk": "Болжамды есептеу мүмкін болмады. Бір минуттан кейін қайталап көріңіз.",
@@ -98,8 +115,28 @@ def assess_region(region: dict, replay_date: str | None = None) -> drought.Asses
 
 async def reply_assessment(update: Update, context: ContextTypes.DEFAULT_TYPE, region: dict,
                            replay_date: str | None = None) -> None:
-    a = await asyncio.to_thread(assess_region, region, replay_date)
-    await update.effective_message.reply_text(advice.message(a, region, lang_of(update, context)), parse_mode="Markdown")
+    lang = lang_of(update, context)
+    key = (region["id"], REPLAY, replay_date)
+    task = _inflight.get(key)
+    if task is None:
+        if len(_inflight) >= MAX_INFLIGHT:
+            await update.effective_message.reply_text(TEXT["busy"][lang])
+            return
+        task = asyncio.create_task(asyncio.to_thread(assess_region, region, replay_date))
+        _inflight[key] = task
+
+        def finished(done):
+            if _inflight.get(key) is done:
+                _inflight.pop(key, None)
+            if not done.cancelled():
+                done.exception()  # retrieve errors even if the caller's wait has ended
+        task.add_done_callback(finished)
+    try:
+        a = await asyncio.wait_for(asyncio.shield(task), timeout=ASSESSMENT_WAIT_S)
+    except asyncio.TimeoutError:
+        await update.effective_message.reply_text(TEXT["slow"][lang])
+        return
+    await update.effective_message.reply_text(advice.message(a, region, lang), parse_mode="Markdown")
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -117,8 +154,12 @@ async def load_lang(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if data_ is None or "lang" in data_ or data_.get("lang_checked") or update.effective_user is None:
         return
     data_["lang_checked"] = True
-    lang = await asyncio.to_thread(store.get_lang, update.effective_user.id)
-    if lang in LANGS.values():
+    try:
+        future = asyncio.get_running_loop().run_in_executor(_language_pool, store.get_lang, update.effective_user.id)
+        lang = await asyncio.wait_for(future, timeout=LANG_WAIT_S)
+    except asyncio.TimeoutError:
+        return  # use Telegram's language; optional storage must not hold up /start
+    if lang in LANGS.values() and "lang" not in data_:
         data_["lang"] = lang
 
 
@@ -126,7 +167,12 @@ async def set_lang(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["lang"] = LANGS[update.effective_message.text]
     await start(update, context)
     if update.effective_user is not None:
-        await asyncio.to_thread(store.set_lang, update.effective_user.id, context.user_data["lang"])
+        try:
+            future = asyncio.get_running_loop().run_in_executor(_language_pool, store.set_lang,
+                                                               update.effective_user.id, context.user_data["lang"])
+            await asyncio.wait_for(future, timeout=LANG_WAIT_S)
+        except asyncio.TimeoutError:
+            pass  # the choice is already active in memory
 
 
 async def on_location(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -146,6 +192,7 @@ async def by_district(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if arg not in REGIONS:
         await update.effective_message.reply_text("/district " + " | ".join(REGIONS))
         return
+    await update.effective_message.reply_text(TEXT["wait"][lang_of(update, context)])
     await reply_assessment(update, context, REGIONS[arg])
 
 
@@ -170,7 +217,8 @@ async def on_error(update: object, context: ContextTypes.DEFAULT_TYPE):
 
 
 def build(token: str) -> Application:
-    app = Application.builder().token(token).build()
+    # Independent commands: a weather request must not queue every user's /start.
+    app = Application.builder().token(token).concurrent_updates(8).build()
     new_message = ~filters.UpdateType.EDITED  # live-location updates arrive as edits; answer only once
     app.add_handler(TypeHandler(Update, load_lang), group=-1)
     app.add_handler(CommandHandler("start", start, filters=new_message))
@@ -189,9 +237,8 @@ def main():
     token = os.environ.get("TELEGRAM_TOKEN")
     if not token:
         sys.exit("Set TELEGRAM_TOKEN (get one from @BotFather).")
-    store.ping()
     app = build(token)
-    url = os.environ.get("RENDER_EXTERNAL_URL")
+    url = None if "--polling" in sys.argv else os.environ.get("RENDER_EXTERNAL_URL")
     if url:
         secret = hashlib.sha256(token.encode()).hexdigest()
         app.run_webhook(listen="0.0.0.0", port=int(os.environ.get("PORT", "10000")), url_path=secret[:32],

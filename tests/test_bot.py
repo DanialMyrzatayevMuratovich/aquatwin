@@ -1,4 +1,5 @@
 import asyncio
+import threading
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -12,6 +13,7 @@ def replay_mode(monkeypatch):
     """Handlers are exercised on the replay path, which needs no network."""
     monkeypatch.setattr(bot, "REPLAY", True)
     monkeypatch.setattr(bot, "_cache", {})
+    monkeypatch.setattr(bot, "_inflight", {})
 
 
 def call(handler, text=None, lat=None, lon=None, args=None, user_data=None, app_lang=None):
@@ -67,7 +69,7 @@ def test_location_far_away_is_declined():
 
 def test_district_command():
     texts, _ = call(bot.by_district, args=["Kyzylorda"], user_data={"lang": "kk"})
-    assert "Аудан: Қызылорда" in texts[0]
+    assert texts[0] == bot.TEXT["wait"]["kk"] and "Аудан: Қызылорда" in texts[1]
     texts, _ = call(bot.by_district, args=[])
     assert texts[0].startswith("/district maktaaral | ")
 
@@ -131,3 +133,47 @@ def test_language_choice_is_saved(monkeypatch):
 def test_application_wiring():
     app = bot.build("123456:TEST-TOKEN")
     assert len(app.handlers[0]) == 6 and len(app.handlers[-1]) == 1 and app.error_handlers
+    assert app.concurrent_updates == 8
+
+
+def test_slow_database_does_not_hold_up_language_handler(monkeypatch):
+    async def scenario():
+        blocked = threading.Event()
+        def slow_lookup(*args):
+            blocked.wait(timeout=2)
+            return "kk"
+        monkeypatch.setattr(bot.store, "get_lang", slow_lookup)
+        monkeypatch.setattr(bot, "LANG_WAIT_S", 0.01)
+        update, context = MagicMock(spec=Update), MagicMock()
+        update.effective_user.id, context.user_data = 42, {}
+        try:
+            await asyncio.wait_for(bot.load_lang(update, context), timeout=0.3)
+            assert "lang" not in context.user_data
+        finally:
+            blocked.set()
+    asyncio.run(scenario())
+
+
+def test_slow_forecast_returns_status_and_reuses_inflight_job(monkeypatch):
+    async def scenario():
+        blocked = asyncio.Event()
+        calls = []
+        result = bot.assess_region(bot.REGIONS["maktaaral"])
+        async def slow_thread(*args):
+            calls.append(1)
+            await blocked.wait()
+            return result
+        monkeypatch.setattr(bot.asyncio, "to_thread", slow_thread)
+        monkeypatch.setattr(bot, "ASSESSMENT_WAIT_S", 0.01)
+        update, context = MagicMock(spec=Update), MagicMock()
+        update.effective_message.reply_text = AsyncMock()
+        context.user_data = {"lang": "en"}
+        await bot.reply_assessment(update, context, bot.REGIONS["maktaaral"])
+        update.effective_message.reply_text.assert_awaited_with(bot.TEXT["slow"]["en"])
+        await bot.reply_assessment(update, context, bot.REGIONS["maktaaral"])
+        assert len(calls) == 1 and len(bot._inflight) == 1
+        blocked.set()
+        await asyncio.gather(*bot._inflight.values())
+        await asyncio.sleep(0)
+        assert not bot._inflight
+    asyncio.run(scenario())
